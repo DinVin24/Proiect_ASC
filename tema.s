@@ -1,5 +1,5 @@
 .data:
-    x: .long 5
+    x: .long 7
 .text:
 .global main
 main:
