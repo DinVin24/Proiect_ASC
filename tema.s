@@ -75,7 +75,7 @@ fct_add:
 .global main
 main:
     call umplere_zerouri
-    call fct_add
+    #call fct_add
     call afisare_vector
 
 etexit:
@@ -86,3 +86,7 @@ etexit:
     movl $1,%eax
     movl $0,%ebx
     int $0x80
+
+#git add .
+#git commit -m "mesaj"
+#git push origin main
