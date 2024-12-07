@@ -2,6 +2,7 @@
     vector: .space 1024
     start_liber: .long 0   #memoram de unde incep zero-urile
     end_vector: .long 1023
+    space_available: .long 1024
     aidi: .space 1 #Variabila pt ID
     spatiu_aidi: .space 4 #Variabila pt spatiul unui ID
     var_citire: .space 4 #Variabila pt citire numere...
@@ -82,12 +83,27 @@ fct_add:
     je decrementez  #doar daca spatiul %8 ==0
     GataDecrementarea:
 
-    movl %eax,spatiu_aidi
+    movl %eax,spatiu_aidi           #pastram dimensiunea efectiva in blockuri - 1
+    incl %eax                           #compensare...
+    cmp space_available,%eax           #daca consuma mai mult spatiu decat avem, renuntam...
+    ja Space_Unavailable
+    decl %eax                           #anulez "compensarea"
+    movl space_available,%edx           #daca avem destul spatiu, actualizez spatiul ramas
+    subl spatiu_aidi,%edx
+    decl %edx                           #compensez pt inacuratetea lui spatiu_aidi de mai sus...
+    movl %edx,space_available
+
+    #TEST
+    #pushl %eax
+    #movl space_available,%eax
+    #call afisare
+    #popl %eax
+
+    #SF. TEST
+    
     movb aidi,%cl
     movl start_liber,%edx
     addl start_liber,%eax
-    #pushl start_liber
-    #pushl %eax
     loop_add:        #incep cu edx de la start_liber pana la %eax inclusiv
         cmp %eax,%edx
         ja gata_loopul
@@ -99,13 +115,20 @@ fct_add:
     incl %eax                   #actualizez inceputul partii libere din vector
     movl %eax,start_liber
     call afisare_add
-    #popl %eax
-    #popl %eax
     ret
 
     decrementez:
         decl %eax
         jmp GataDecrementarea
+    Space_Unavailable:   #cazul in care nu mai avem spatiu pt fisiere  (o sa se complice cand fac DELETE :(  )
+        pushl $0
+        pushl $0
+        pushl $formatInterval
+        call printf
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        ret
     
 afisare_add:
     #Aici am facut niste chestii neortodoxe, ma folosesc de niste variabile care daca nu-s atent la ele, 
@@ -133,11 +156,15 @@ ADD_ID:
         loop nume_de_loop
     ret
 
+gasireInterval:
+
+    ret
+
 .global main
 main:
     call umplere_zerouri
     call ADD_ID
-    call afisare_vector
+    #call afisare_vector
 
 etexit:
     pushl $0
