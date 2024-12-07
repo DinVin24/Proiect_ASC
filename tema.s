@@ -1,14 +1,18 @@
 .data
     vector: .space 1024
-    aidi: .byte 5 #Variabila pt ID
-    spatiu_aidi: .byte 20 #Variabila pt spatiul unui ID
-    var_citire: .space 1 #Variabila pt citire numere...
-    formatPrintf: .asciz "%d"
+    start_liber: .long 0   #memoram de unde incep zero-urile
+    end_vector: .long 1023
+    aidi: .space 1 #Variabila pt ID
+    spatiu_aidi: .space 4 #Variabila pt spatiul unui ID
+    var_citire: .space 4 #Variabila pt citire numere...
+    formatPrintf: .asciz "%d "
+    formatInterval: .asciz "(%d, %d)\n"
     formatString: .asciz "%ld"
     newLine: .asciz "\n"
 .text
 
 citire:
+    #Citim de la tast. un numar. Acesta ramane memorat in var_citire!!
     pushl $var_citire
     pushl $formatString
     call scanf
@@ -17,6 +21,7 @@ citire:
     ret
 
 afisare:
+    #Afisam pe ecran un numar, cu spatiu. Inainte de apel, trb sa mutam in EAX nr de afisat!!!
     pushl %eax
     pushl $formatPrintf
     call printf
@@ -25,11 +30,13 @@ afisare:
     ret
 
 afisare_vector:
+    #Afisez tot vectorul, n-ai nev. de parametrii.
     lea vector, %edi
     xorl %ecx,%ecx
     et1loop:
         cmp $1024,%ecx
         je pls1stop
+        xorl %eax,%eax
         movb (%edi,%ecx,1),%al
         pushl %ecx
         call afisare
@@ -41,6 +48,7 @@ afisare_vector:
         ret
 
 umplere_zerouri:
+    #Self explanatory
     lea vector,%edi
     xorl %eax, %eax
     xorl %ecx, %ecx
@@ -55,27 +63,80 @@ umplere_zerouri:
     pls2stop:
         ret
 
-fct_add:
-#EMANUEL TE ROG SA MA REPARI, NU FUNCTIONEZ CONFORM STANDARDELOR!!!
-    #call citire 
-    #movb var_citire,%al
-    #movb %al,aidi
-    #call citire
-    #movb var_citire,%al
-    #movb %al,spatiu_aidi #Pana aici am citit ID-ul si spatiul
 
-    movl spatiu_aidi,%eax   #Aici voi incerca un ceil(spatiu/8)
-    xorl %edx,%edx
+fct_add:
+    #N-am cuvinte...
+    call citire    #AICI CITIM ID-UL
+    movb var_citire,%al
+    movb %al,aidi
+
+    call citire    #AICI CITIM SPATIUL OCUPAT
+    movl var_citire,%eax
+    movl %eax,spatiu_aidi 
+
+    lea vector,%edi #ma joc cu vectorul
+    xorl %edx,%edx 
     movl $8,%ebx
-    divl %ebx
-    lea vector, %edi
-    movl aidi,%ecx
-    movb %cl,(%edi,%eax,1)
+    divl %ebx      #impart la 8
+    cmp $0,%edx
+    je decrementez  #doar daca spatiul %8 ==0
+    GataDecrementarea:
+
+    movl %eax,spatiu_aidi
+    movb aidi,%cl
+    movl start_liber,%edx
+    addl start_liber,%eax
+    #pushl start_liber
+    #pushl %eax
+    loop_add:        #incep cu edx de la start_liber pana la %eax inclusiv
+        cmp %eax,%edx
+        ja gata_loopul
+        movb %cl,(%edi,%edx,1)
+        incl %edx
+        jmp loop_add
+
+    gata_loopul:
+    incl %eax                   #actualizez inceputul partii libere din vector
+    movl %eax,start_liber
+    call afisare_add
+    #popl %eax
+    #popl %eax
+    ret
+
+    decrementez:
+        decl %eax
+        jmp GataDecrementarea
+    
+afisare_add:
+    #Aici am facut niste chestii neortodoxe, ma folosesc de niste variabile care daca nu-s atent la ele, 
+    #s-ar putea sa se piarda
+    movl start_liber,%eax
+    decl %eax
+    movl %eax,%edx
+    subl spatiu_aidi,%edx
+    pushl %eax
+    pushl %edx
+    pushl $formatInterval
+    call printf
+    popl %ebx
+    popl %ebx
+    popl %ebx
+    ret
+
+ADD_ID:
+    call citire
+    movl var_citire,%ecx
+    nume_de_loop:
+        pushl %ecx
+        call fct_add
+        popl %ecx
+        loop nume_de_loop
+    ret
 
 .global main
 main:
     call umplere_zerouri
-    #call fct_add
+    call ADD_ID
     call afisare_vector
 
 etexit:
