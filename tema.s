@@ -53,12 +53,15 @@ afisare_vector:
 
 umplere_zerouri:
     #Self explanatory
+    #Umplu cu zero-uri de la un capat dat la altul!!
     lea vector,%edi
     xorl %eax, %eax
-    xorl %ecx, %ecx
+    movl 8(%esp), %ecx
+    movl 4(%esp),%edx
+    incl %edx
 
     et2loop:
-        cmp $1024,%ecx
+        cmp %edx,%ecx
         je pls2stop
         movb %al,(%edi,%ecx,1)
         incl %ecx
@@ -67,6 +70,14 @@ umplere_zerouri:
     pls2stop:
         ret
 
+init_vector:
+#am facut functia asta doar sa arate mai clean main-ul
+    pushl $0
+    pushl $1023
+    call umplere_zerouri
+    popl %ebx
+    popl %ebx
+    ret
 
 fct_add:
     #N-am cuvinte...
@@ -210,19 +221,31 @@ GET_BOUNDS:
     popl %ebx
     ret
 
-.global main
-main:
-    call umplere_zerouri
-    call ADD_ID
-    call GET_BOUNDS
-    /*pushl $143
+DELETE:
+#functia asta trb si sa afiseze ceva... mai ai de lucru dar e bn 
+    call citire
+    pushl var_citire
     call gasireInterval
     popl %ebx
-    movl inceput_interval,%eax
-    call afisare
-    movl final_interval,%eax
-    call afisare*/
-    #call afisare_vector
+    xorl %ebx,%ebx
+    cmp final_interval,%ebx
+    je NU_EXISTA
+    pushl inceput_interval
+    pushl final_interval
+    call umplere_zerouri
+    popl %ebx
+    popl %ebx
+
+    NU_EXISTA:
+    ret
+
+.global main
+main:
+    call init_vector
+    call ADD_ID
+    call GET_BOUNDS
+    call DELETE
+    call afisare_vector
 
 etexit:
     pushl $0
