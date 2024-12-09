@@ -16,7 +16,7 @@
 .text
 
 citire:
-    #Citim de la tast. un numar. Acesta ramane memorat in var_citire!!
+#Citim de la tast. un numar. Acesta ramane memorat in var_citire!!
     pushl $var_citire
     pushl $formatString
     call scanf
@@ -25,7 +25,7 @@ citire:
     ret
 
 afisare:
-    #Afisam pe ecran un numar, cu spatiu. Inainte de apel, trb sa mutam in EAX nr de afisat!!!
+#Afisam pe ecran un numar, cu spatiu. Inainte de apel, trb sa mutam in EAX nr de afisat!!!
     pushl %eax
     pushl $formatPrintf
     call printf
@@ -34,7 +34,7 @@ afisare:
     ret
 
 afisare_vector:
-    #Afisez tot vectorul, n-ai nev. de parametrii.
+#Afisez tot vectorul, n-ai nev. de parametrii.
     lea vector, %edi
     xorl %ecx,%ecx
     et1loop:
@@ -52,8 +52,8 @@ afisare_vector:
         ret
 
 umplere_zerouri:
-    #Self explanatory
-    #Umplu cu zero-uri de la un capat dat la altul!!
+#Self explanatory
+#Umplu cu zero-uri de la un capat dat la altul!!
     lea vector,%edi
     xorl %eax, %eax
     movl 8(%esp), %ecx
@@ -80,7 +80,7 @@ init_vector:
     ret
 
 fct_add:
-    #N-am cuvinte...
+#N-am cuvinte...
     call citire    #AICI CITIM ID-UL
     movb var_citire,%al
     movb %al,aidi
@@ -145,8 +145,8 @@ fct_add:
         ret
     
 afisare_add:
-    #Aici am facut niste chestii neortodoxe, ma folosesc de niste variabile care daca nu-s atent la ele, 
-    #s-ar putea sa se piarda
+#Aici am facut niste chestii neortodoxe, ma folosesc de niste variabile care daca nu-s atent la ele, 
+#s-ar putea sa se piarda
     xorl %ecx,%ecx
     movb aidi,%cl
     movl start_liber,%eax
@@ -175,9 +175,8 @@ ADD_ID:
     ret
 
 gasireInterval:
-    #Uoff incerc sa o fac cu parametru...
-    #Inainte de apelare, trb sa pui ID-ul in stiva. Capetele intervalului sunt memorate in variabilele nebune
-    #inceput_interval si final_interval
+#Inainte de apelare, trb sa pui ID-ul in stiva. Capetele intervalului sunt memorate in variabilele nebune
+#inceput_interval si final_interval
     xorl %ebx,%ebx
     movl 4(%esp),%eax
     lea vector, %edi
@@ -222,7 +221,7 @@ GET_BOUNDS:
     ret
 
 DELETE:
-#functia asta trb si sa afiseze ceva... mai ai de lucru dar e bn 
+#Stergem un fisier dupa ID-ul citit de la tastatura, apoi afisez memoria...
     call citire
     pushl var_citire
     call gasireInterval
@@ -235,8 +234,44 @@ DELETE:
     call umplere_zerouri
     popl %ebx
     popl %ebx
-
+    call afisare_memorie
     NU_EXISTA:
+    ret
+
+afisare_memorie:
+#Really self explanatory...
+    xorl %ecx,%ecx #i-ul meu
+    lea vector,%edi
+    inceput_for:    #iau fiecare element din vector, daca reprezinta un ID, ii caut marginile si le afisez.
+        cmp $1024,%ecx
+        jae am_ajuns_la_capat
+        xorl %eax,%eax
+        movb (%edi,%ecx,1),%al
+        cmp $0,%eax
+        jne am_gasit_element
+        incl %ecx
+        revenire:
+        jmp inceput_for
+
+    am_gasit_element:
+        pushl %eax
+        call gasireInterval
+        popl %eax
+        pushl final_interval
+        pushl inceput_interval
+        pushl %eax
+        pushl $formatInterval
+        call printf
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        popl %eax
+
+        movl final_interval,%ecx
+        incl %ecx
+        jmp revenire
+
+    am_ajuns_la_capat:
     ret
 
 .global main
@@ -245,7 +280,7 @@ main:
     call ADD_ID
     call GET_BOUNDS
     call DELETE
-    call afisare_vector
+    #call afisare_vector
 
 etexit:
     pushl $0
