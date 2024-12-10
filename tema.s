@@ -51,13 +51,13 @@ afisare_vector:
     pls1stop:
         ret
 
-umplere_zerouri:
+umplere:
 #Self explanatory
-#Umplu cu zero-uri de la un capat dat la altul!!
+#Umplu cu ID de la un capat dat la altul!!
     lea vector,%edi
-    xorl %eax, %eax
-    movl 8(%esp), %ecx
-    movl 4(%esp),%edx
+    movl 12(%esp),%eax   #ID
+    movl 8(%esp), %ecx   #INCEPUT
+    movl 4(%esp),%edx    #FINAL
     incl %edx
 
     et2loop:
@@ -73,8 +73,10 @@ umplere_zerouri:
 init_vector:
 #am facut functia asta doar sa arate mai clean main-ul
     pushl $0
+    pushl $0
     pushl $1023
-    call umplere_zerouri
+    call umplere
+    popl %ebx
     popl %ebx
     popl %ebx
     ret
@@ -98,39 +100,44 @@ fct_add:
     GataDecrementarea:
 
     movl %eax,spatiu_aidi           #pastram dimensiunea efectiva in blockuri - 1
-    incl %eax                           #compensare...
-    cmp space_available,%eax           #daca consuma mai mult spatiu decat avem, renuntam...
-    ja Space_Unavailable
-    decl %eax                           #anulez "compensarea"
-    movl space_available,%edx           #daca avem destul spatiu, actualizez spatiul ramas
-    subl spatiu_aidi,%edx
-    decl %edx                           #compensez pt inacuratetea lui spatiu_aidi de mai sus...
-    movl %edx,space_available
-
-    #TEST
-    #pushl %eax
-    #movl space_available,%eax
-    #call afisare
-    #popl %eax
-
-    #SF. TEST
+    jmp cautam_spatiu          #eticheta pt cautarea unui spatiu
+    avem_spatiu:
+    subl spatiu_aidi,%ecx
+    decl %ecx
+    pushl aidi
+    pushl %ecx
+    pushl %ebx
+    call umplere
+    popl %ebx
+    popl %ebx
+    popl %ebx
     
-    movb aidi,%cl
-    movl start_liber,%edx
-    addl start_liber,%eax
-    loop_add:        #incep cu edx de la start_liber pana la %eax inclusiv
-        cmp %eax,%edx
-        ja gata_loopul
-        movb %cl,(%edi,%edx,1)
-        incl %edx
-        jmp loop_add
-
-    gata_loopul:
-    incl %eax                   #actualizez inceputul partii libere din vector
-    movl %eax,start_liber
     call afisare_add
     ret
 
+    cautam_spatiu:#un for de la 0 la 1024-spatiu aidi. verific fiecare elem daca este gol. daca am destule goale,
+    #mi-am gasit locul
+    xorl %ecx,%ecx
+    movl $1024,%edx
+    subl spatiu_aidi,%edx
+    forVector:
+        cmp %edx,%ecx
+        jae Space_Unavailable
+        movl %ecx,%ebx
+        addl spatiu_aidi,%ebx     #EBX TINE LIMITA SUPERIOARA A INTERVALULUI
+        movl %ecx,%eax
+        forInterval:
+            cmp %ebx,%ecx
+            ja  avem_spatiu
+            cmpb $0,(%edi,%ecx,1)
+            jne sfForInterval
+            incl %ecx
+            jmp forInterval
+        sfForInterval:
+        movl %eax,%ecx
+        incl %ecx
+        jmp forVector
+    
     decrementez:
         decl %eax
         jmp GataDecrementarea
@@ -145,23 +152,23 @@ fct_add:
         ret
     
 afisare_add:
-#Aici am facut niste chestii neortodoxe, ma folosesc de niste variabile care daca nu-s atent la ele, 
-#s-ar putea sa se piarda
-    xorl %ecx,%ecx
-    movb aidi,%cl
-    movl start_liber,%eax
-    decl %eax
-    movl %eax,%edx
-    subl spatiu_aidi,%edx
+#S-o stricat, am rescris-o
+    xorl %eax,%eax
+    movb aidi,%al
     pushl %eax
-    pushl %edx
-    pushl %ecx
+    call gasireInterval
+    popl %eax
+    pushl final_interval
+    pushl inceput_interval
+    pushl %eax
     pushl $formatInterval
     call printf
     popl %ebx
     popl %ebx
     popl %ebx
     popl %ebx
+    
+    
     ret
 
 ADD_ID:
@@ -229,9 +236,11 @@ DELETE:
     xorl %ebx,%ebx
     cmp final_interval,%ebx
     je NU_EXISTA
+    pushl $0
     pushl inceput_interval
     pushl final_interval
-    call umplere_zerouri
+    call umplere
+    popl %ebx
     popl %ebx
     popl %ebx
     call afisare_memorie
@@ -280,7 +289,10 @@ main:
     call ADD_ID
     call GET_BOUNDS
     call DELETE
-    #call afisare_vector
+    call ADD_ID
+    call afisare_vector
+    call DELETE
+    call afisare_vector
 
 etexit:
     pushl $0
