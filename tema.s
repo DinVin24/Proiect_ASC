@@ -1,8 +1,5 @@
 .data
     vector: .space 1024
-    start_liber: .long 0   #memoram de unde incep zero-urile
-    end_vector: .long 1023
-    space_available: .long 1024
     inceput_interval: .space 4  #aceste doua variabile le folosesc la functia GET si DELETE
     final_interval: .space 4
     aidi: .space 1 #Variabila pt ID
@@ -12,7 +9,6 @@
     formatInterval: .asciz "%d: (%d, %d)\n"
     formatGet: .asciz "(%d, %d)\n"
     formatString: .asciz "%ld"
-    newLine: .asciz "\n"
 .text
 
 the_real_main:
@@ -30,7 +26,8 @@ the_real_main:
         je apelam_get
         cmp $3,%eax #ADICA DELETE
         je apelam_delete 
-
+        cmp $4,%eax #ADICA DEFRAGALALAL
+        je apelam_defralalala
 
         revenim:
         popl %ecx
@@ -45,6 +42,9 @@ the_real_main:
     apelam_delete:
         call DELETE
         jmp revenim
+    apelam_defralalala:
+        call DEFRAGMENTATION
+        jmp revenim
     ret
 citire:
 #Citim de la tast. un numar. Acesta ramane memorat in var_citire!!
@@ -57,6 +57,7 @@ citire:
 
 afisare:
 #Afisam pe ecran un numar, cu spatiu. Inainte de apel, trb sa mutam in EAX nr de afisat!!!
+#asta-i doar de debugging pt mine, nu se apeleaza deloc la teste
     pushl %eax
     pushl $formatPrintf
     call printf
@@ -66,6 +67,7 @@ afisare:
 
 afisare_vector:
 #Afisez tot vectorul, n-ai nev. de parametrii.
+#la fel si asta
     lea vector, %edi
     xorl %ecx,%ecx
     et1loop:
@@ -83,10 +85,9 @@ afisare_vector:
         ret
 
 umplere:
-#Self explanatory
-#Umplu cu ID de la un capat dat la altul!!
+#Umplu cu aidi de la un capat dat la altul!! push id,inceput,final
     lea vector,%edi
-    movl 12(%esp),%eax   #ID
+    movl 12(%esp),%eax   #aidi
     movl 8(%esp), %ecx   #INCEPUT
     movl 4(%esp),%edx    #FINAL
     incl %edx
@@ -113,8 +114,8 @@ init_vector:
     ret
 
 fct_add:
-#N-am cuvinte...  MAI testeaza functia sa te asiguri ca functioneaza bine pt cazuri limita...
-    call citire    #AICI CITIM ID-UL
+#Adauga in memorie, unde exista loc, aidiul citit
+    call citire    #AICI CITIM aidiUL
     movb var_citire,%al
     movb %al,aidi
 
@@ -153,9 +154,9 @@ fct_add:
     subl spatiu_aidi,%edx
     forVector:
         cmp %edx,%ecx
-        jge Space_Unavailable    #AICI AM PUS CU SEMN
+        jge Space_Unavailable       #AICI AM PUS CU SEMN
         movl %ecx,%ebx
-        addl spatiu_aidi,%ebx     #EBX TINE LIMITA SUPERIOARA A INTERVALULUI
+        addl spatiu_aidi,%ebx       #EBX TINE LIMITA SUPERIOARA A INTERVALULUI
         movl %ecx,%eax
         forInterval:
             cmp %ebx,%ecx
@@ -172,7 +173,7 @@ fct_add:
     decrementez:
         decl %eax
         jmp GataDecrementarea
-    Space_Unavailable:   #cazul in care nu mai avem spatiu pt fisiere  (o sa se complice cand fac DELETE :(  )
+    Space_Unavailable:  #cazul in care nu mai avem spatiu pt fisiere 
         pushl $0
         pushl $0
         pushl $formatGet
@@ -183,7 +184,7 @@ fct_add:
         ret
     
 afisare_add:
-#S-o stricat, am rescris-o
+#Se apeleaza dupa add, afiseaza intervalul in care am salvat aidiul
     xorl %eax,%eax
     movb aidi,%al
     pushl %eax
@@ -203,6 +204,7 @@ afisare_add:
     ret
 
 ADD_ID:
+#Asta face doar un loop, adevarata teroare e la fct_add
     call citire
     movl var_citire,%ecx
     nume_de_loop:
@@ -245,6 +247,7 @@ gasireInterval:
         ret
 
 GET_BOUNDS:
+#Citim aidiul de cautat si apoi apelam fct. gasireInterval
     call citire
     pushl var_citire
     call gasireInterval
@@ -274,15 +277,15 @@ DELETE:
     popl %ebx
     popl %ebx
     popl %ebx
-    call afisare_memorie
     NU_EXISTA:
+    call afisare_memorie
     ret
 
 afisare_memorie:
-#Really self explanatory...
+#Am pus un nume prea bun functiei ca sa iti mai explic in comentariu ce face
     xorl %ecx,%ecx #i-ul meu
     lea vector,%edi
-    inceput_for:    #iau fiecare element din vector, daca reprezinta un ID, ii caut marginile si le afisez.
+    inceput_for:    #iau fiecare element din vector, daca reprezinta un aidi, ii caut marginile si le afisez.
         cmp $1024,%ecx
         jae am_ajuns_la_capat
         xorl %eax,%eax
@@ -314,6 +317,32 @@ afisare_memorie:
     am_ajuns_la_capat:
     ret
 
+DEFRAGMENTATION:
+#Sparge "bule" de 0-uri
+    xorl %eax,%eax  #AUX-ul meu
+    xorl %ebx,%ebx  #aici o sa am 0
+    xorl %ecx,%ecx  #cu asta ma plimb prin vector
+    xorl %edx,%edx  #cu asta stiu unde sa mut aidiuri
+    lea vector,%edi
+    incepemLoop:    #luam fiecare elem. din vect. daca e un aidi, il mut mai la stanga basically, dezvolt mai jos
+        cmp $1024,%ecx
+        je terminamLoop
+        cmp %bl,(%edi,%ecx,1)
+        jne shiftleft
+        neRevenim:
+        incl %ecx
+        jmp incepemLoop
+    terminamLoop:
+    call afisare_memorie
+    ret
+
+    shiftleft:  #in edx am un index, practic sfarsitul memoriei umplute, unde stiu ca nu sunt zerouri la stanga
+        movb (%edi,%ecx,1),%al  
+        movb %bl,(%edi,%ecx,1)  #pun 0 pe pozitia curenta
+        movb %al,(%edi,%edx,1)  #pun aidiul la edx, unde vreau eu de fapt sa fie
+        incl %edx
+        jmp neRevenim
+
 .global main
 main:
     call init_vector
@@ -327,7 +356,3 @@ etexit:
     movl $1,%eax
     movl $0,%ebx
     int $0x80
-
-#git add .
-#git commit -m "mesaj"
-#git push origin main
