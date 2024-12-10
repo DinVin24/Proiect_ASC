@@ -15,6 +15,37 @@
     newLine: .asciz "\n"
 .text
 
+the_real_main:
+#Aici se apeleaza de fapt functiile, ca sa nu-mi mai umplu main-ul. very clean very nice
+    call citire
+    movl var_citire,%ecx
+    startLoop:
+        pushl %ecx
+        call citire
+        movl var_citire,%eax
+
+        cmp $1,%eax  #ADICA ADD 
+        je apelam_add
+        cmp $2,%eax #ADICA GET
+        je apelam_get
+        cmp $3,%eax #ADICA DELETE
+        je apelam_delete 
+
+
+        revenim:
+        popl %ecx
+        loop startLoop
+    ret
+    apelam_add:
+        call ADD_ID
+        jmp revenim
+    apelam_get:
+        call GET_BOUNDS
+        jmp revenim
+    apelam_delete:
+        call DELETE
+        jmp revenim
+    ret
 citire:
 #Citim de la tast. un numar. Acesta ramane memorat in var_citire!!
     pushl $var_citire
@@ -82,7 +113,7 @@ init_vector:
     ret
 
 fct_add:
-#N-am cuvinte...
+#N-am cuvinte...  MAI testeaza functia sa te asiguri ca functioneaza bine pt cazuri limita...
     call citire    #AICI CITIM ID-UL
     movb var_citire,%al
     movb %al,aidi
@@ -122,7 +153,7 @@ fct_add:
     subl spatiu_aidi,%edx
     forVector:
         cmp %edx,%ecx
-        jae Space_Unavailable
+        jge Space_Unavailable    #AICI AM PUS CU SEMN
         movl %ecx,%ebx
         addl spatiu_aidi,%ebx     #EBX TINE LIMITA SUPERIOARA A INTERVALULUI
         movl %ecx,%eax
@@ -286,13 +317,7 @@ afisare_memorie:
 .global main
 main:
     call init_vector
-    call ADD_ID
-    call GET_BOUNDS
-    call DELETE
-    call ADD_ID
-    call afisare_vector
-    call DELETE
-    call afisare_vector
+    call the_real_main
 
 etexit:
     pushl $0
