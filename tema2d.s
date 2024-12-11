@@ -7,11 +7,48 @@
     spatiu_aidi: .space 4 #Variabila care va retine nr de blocuri-1
     aidi: .space 1 #Variabila care va retine aidiul citit
     formatPrintf: .asciz "%d "
-    formatInterval: .asciz "%d: (%d, %d)\n"
-    formatGet: .asciz "(%d, %d)\n"
+    formatInterval: .asciz "%d: ((%d, %d), (%d, %d))\n"
+    formatGet: .asciz "((%d, %d), (%d, %d))\n"
     formatString: .asciz "%ld"
     newLine: .asciz "\n"
 .text
+
+the_real_main:
+#Aici se apeleaza de fapt functiile, ca sa nu-mi mai umplu main-ul. very clean very nice
+    call citire
+    movl var_citire,%ecx
+    startLoop:
+        pushl %ecx
+        call citire
+        movl var_citire,%eax
+
+        cmp $1,%eax  #ADICA ADD 
+        je apelam_add
+        cmp $2,%eax #ADICA GET
+        je apelam_get
+        cmp $3,%eax #ADICA DELETE
+        je apelam_delete 
+        #cmp $4,%eax #ADICA DEFRAGALALAL
+        #je apelam_defralalala
+
+        revenim:
+        popl %ecx
+        loop startLoop
+    ret
+    apelam_add:
+        call ADD_ID
+        jmp revenim
+    apelam_get:
+        call GET_BOUNDS
+        jmp revenim
+    apelam_delete:
+        call DELETE
+        jmp revenim/*
+    apelam_defralalala:
+        call DEFRAGMENTATION
+        jmp revenim*/
+    ret
+
 citire:
 #Citim de la tast. un numar. Acesta ramane memorat in var_citire!!
     pushl $var_citire
@@ -54,6 +91,7 @@ afisare_matrice:
         incl %ecx
         jmp forAfisare
     pls1stop:
+        call afisamNewLine
         ret
 
 afisamNewLine:
@@ -154,7 +192,7 @@ fct_add:
     popl %ebx
     popl %ebx
 
-    #call afisare_add   #EMANUEL TE ROG EU FRUMOS SA FACI FUNCTIA ASTA INAPOI!!
+    call afisare_add
     ret
 
     
@@ -245,13 +283,175 @@ verific_interval_gol:
         xorl %eax,%eax
         ret
 
+afisare_add:
+#Se apeleaza dupa add, afiseaza intervalul in care am salvat aidiul
+    xorl %eax,%eax
+    movb aidi,%al
+    pushl %eax
+    call gasireInterval
+    popl %eax
+    pushl final_interval
+    pushl rand_actual
+    pushl inceput_interval
+    pushl rand_actual
+    pushl %eax
+    pushl $formatInterval
+    call printf
+    popl %ebx
+    popl %ebx
+    popl %ebx
+    popl %ebx
+    popl %ebx
+    popl %ebx
+    
+    ret
+
+ADD_ID:
+#Asta face doar un loop, adevarata teroare e la fct_add
+    call citire
+    movl var_citire,%ecx
+    nume_de_loop:
+        pushl %ecx
+        call fct_add
+        popl %ecx
+        loop nume_de_loop
+    ret
+
+gasireInterval:
+#Inainte de apelare, trb sa pui ID-ul in stiva. Capetele intervalului sunt memorate in variabilele nebune
+#inceput_interval, final_interval si rand_actual
+    xorl %ebx,%ebx
+    movl 4(%esp),%eax
+    lea matrice, %edi
+    xorl %ecx,%ecx
+    caut_inceput:
+        cmp $64,%ecx
+        je nam_gasit
+        cmp %al,(%edi,%ecx,1)
+        je am_gasit
+        incl %ecx
+        jmp caut_inceput
+    
+    am_gasit:
+        movl %ecx, inceput_interval
+        caut_final:
+            cmp %al,(%edi,%ecx,1)
+            jne gataaa
+            incl %ecx
+            jmp caut_final
+        gataaa:
+            decl %ecx
+            movl %ecx,final_interval
+            call formatamIntevalu
+            ret
+    nam_gasit:
+        movl $0,%ecx
+        movl %ecx, inceput_interval
+        movl %ecx,final_interval
+        ret
+formatamIntevalu:   #doar doua impartiri la 8
+    movl inceput_interval,%eax
+    xorl %edx,%edx
+    movl $8,%ebx
+    divl %ebx
+    movl %eax,rand_actual
+    movl %edx,inceput_interval
+    xorl %edx,%edx
+    movl final_interval,%eax
+    divl %ebx
+    movl %edx,final_interval
+    ret
+
+GET_BOUNDS:
+#Citim aidiul de cautat si apoi apelam fct. gasireInterval
+    call citire
+    pushl var_citire
+    call gasireInterval
+    popl %ebx
+    pushl final_interval
+    pushl rand_actual
+    pushl inceput_interval
+    pushl rand_actual
+    pushl $formatGet
+    call printf
+    popl %ebx
+    popl %ebx
+    popl %ebx
+    popl %ebx
+    popl %ebx
+    ret
+
+afisare_memorie:
+#Am pus un nume prea bun functiei ca sa mai explic in comentariu ce face
+    xorl %ecx,%ecx #i-ul meu
+    lea matrice,%edi
+    inceput_for:    #iau fiecare element din matrice, daca reprezinta un aidi, ii caut marginile si le afisez.
+        cmp $64,%ecx
+        jae am_ajuns_la_capat
+        xorl %eax,%eax
+        movb (%edi,%ecx,1),%al
+        cmp $0,%eax
+        jne am_gasit_element
+        incl %ecx
+        revenire:
+        jmp inceput_for
+
+    am_gasit_element:
+        pushl %eax
+        call gasireInterval
+        popl %eax
+        pushl final_interval
+        pushl rand_actual
+        pushl inceput_interval
+        pushl rand_actual
+        pushl %eax
+        pushl $formatInterval
+        call printf
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        
+        movl rand_actual,%eax
+        movl $8,%ebx
+        xorl %edx,%edx
+        mull %ebx
+        addl final_interval,%eax
+        movl %eax,%ecx
+        incl %ecx
+        jmp revenire
+
+    am_ajuns_la_capat:
+    ret
+
+DELETE:
+#Stergem un fisier dupa ID-ul citit de la tastatura, apoi afisez memoria...
+    call citire
+    pushl var_citire
+    call gasireInterval
+    popl %ebx
+    xorl %ebx,%ebx
+    cmp final_interval,%ebx
+    je NU_EXISTA
+    pushl $0
+    pushl rand_actual
+    pushl inceput_interval
+    pushl final_interval
+    call umplere
+    popl %ebx
+    popl %ebx
+    popl %ebx
+    popl %ebx
+    NU_EXISTA:
+    call afisare_memorie
+    ret
+
 .global main
 main:
     call init_matrice
-    call fct_add
-    call fct_add
-    call fct_add
-    call fct_add
+    call the_real_main
     call afisare_matrice
 
 etexit:
@@ -262,3 +462,4 @@ etexit:
     movl $1,%eax
     movl $0,%ebx
     int $0x80
+
