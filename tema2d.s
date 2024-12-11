@@ -248,7 +248,6 @@ verific_interval_gol:
 .global main
 main:
     call init_matrice
-    
     call fct_add
     call fct_add
     call fct_add
