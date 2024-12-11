@@ -174,10 +174,14 @@ fct_add:
         decl %eax
         jmp GataDecrementarea
     Space_Unavailable:  #cazul in care nu mai avem spatiu pt fisiere 
+        xorl %eax,%eax
+        movb aidi,%al
         pushl $0
         pushl $0
-        pushl $formatGet
+        pushl %eax
+        pushl $formatInterval
         call printf
+        popl %ebx
         popl %ebx
         popl %ebx
         popl %ebx
@@ -199,7 +203,6 @@ afisare_add:
     popl %ebx
     popl %ebx
     popl %ebx
-    
     
     ret
 
