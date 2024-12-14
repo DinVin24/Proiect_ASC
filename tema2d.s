@@ -1,5 +1,8 @@
 .data
     matrice: .space 64
+    v_aidiuri: .space 256   #aici am toate aidiurile, fiecare element are 1Byte
+    v_sizeuri: .space 1024  #aici am toate saizurile, fiecare elem. are 4Bytes
+    counteraidi: .byte 0   #asta-mi numara cate aidiuri am salvat
     inceput_interval: .space 4  #aceste doua variabile le folosesc la functia GET si DELETE
     final_interval: .space 4
     rand_actual: .space 4 #iar asta memoreaza randul pe care suntem
@@ -159,14 +162,6 @@ umplere:
 
 fct_add:
 #Adauga in memorie, unde exista loc, aidiul citit
-    call citire    #AICI CITIM aidiUL
-    movb var_citire,%al
-    movb %al,aidi
-
-    call citire    #AICI CITIM SPATIUL OCUPAT
-    movl var_citire,%eax
-    movl %eax,spatiu_aidi 
-
     lea matrice,%edi #ma joc cu vectorul
     xorl %edx,%edx 
     movl $8,%ebx
@@ -312,7 +307,17 @@ ADD_ID:
     movl var_citire,%ecx
     nume_de_loop:
         pushl %ecx
+
+        call citire    #AICI CITIM aidiUL
+        movb var_citire,%al
+        movb %al,aidi
+
+        call citire    #AICI CITIM SPATIUL OCUPAT
+        movl var_citire,%eax
+        movl %eax,spatiu_aidi 
+
         call fct_add
+        
         popl %ecx
         loop nume_de_loop
     ret
@@ -349,6 +354,8 @@ gasireInterval:
         movl %ecx, inceput_interval
         movl %ecx,final_interval
         ret
+
+
 formatamIntevalu:   #doar doua impartiri la 8
     movl inceput_interval,%eax
     xorl %edx,%edx
@@ -448,6 +455,10 @@ DELETE:
     call afisare_memorie
     ret
 
+chemati_salvarea:
+#Salvam toate aidiurile si size urile lor in doi vectori
+    ret
+
 .global main
 main:
     call init_matrice
@@ -463,3 +474,6 @@ etexit:
     movl $0,%ebx
     int $0x80
 
+#git add .
+#git commit -m "mesaj"
+#git push origin main
