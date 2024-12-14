@@ -31,8 +31,8 @@ the_real_main:
         je apelam_get
         cmp $3,%eax #ADICA DELETE
         je apelam_delete 
-        #cmp $4,%eax #ADICA DEFRAGALALAL
-        #je apelam_defralalala
+        cmp $4,%eax #ADICA DEFRAGALALAL
+        je apelam_defralalala
 
         revenim:
         popl %ecx
@@ -46,10 +46,10 @@ the_real_main:
         jmp revenim
     apelam_delete:
         call DELETE
-        jmp revenim/*
+        jmp revenim
     apelam_defralalala:
         call DEFRAGMENTATION
-        jmp revenim*/
+        jmp revenim
     ret
 
 citire:
@@ -117,21 +117,16 @@ afisamNewLine:
 
 init_matrice:
 #am facut functia asta doar sa arate mai clean main-ul
-    movl $8,%edx
+    movl $64,%edx
     xorl %ecx,%ecx
     xorl %eax,%eax
+    lea matrice,%edi
     forInit:
-        cmp %ecx,%edx
-        je gataForInit
-        pushl $0
-        pushl %ecx
-        pushl $0
-        pushl %edx
-        call umplere
-        popl %edx
-        popl %ebx
-        popl %ecx
-        popl %ebx
+        cmp %edx,%ecx
+        jae gataForInit
+        
+        movb %al,(%edi,%ecx,1)
+
         incl %ecx
         jmp forInit
     gataForInit:
@@ -163,6 +158,7 @@ umplere:
 fct_add:
 #Adauga in memorie, unde exista loc, aidiul citit
     lea matrice,%edi #ma joc cu vectorul
+    movl spatiu_aidi,%eax
     xorl %edx,%edx 
     movl $8,%ebx
     divl %ebx      #impart la 8
@@ -543,28 +539,46 @@ afisez_vectorii:
         jmp primulfor
 
     sadasdssdf:
+    pushl $newLine
+    call printf
+    popl %ebx
     ret
 
 DEFRAGMENTATION:
 #memorez tot ce am in 2 vectori, resetez matricea, pun in aidi si spatiu aidi ce am si dau add din nou
 #literalmente clonare, dupa vine discutia filozofica, mai este aceeasi matrice oare? Barca lui Thesseus
     call chemati_salvarea
-    call afisez_vectorii
-    pushl $newLine
-    call printf
-    popl %ebx
+    call init_matrice
+    xorl %ecx,%ecx
+    xorl %eax,%eax
+    aldoileafor:
+        xorl %edx,%edx
+        movb nr_aidiuri,%dl
+        cmp %edx,%ecx
+        jae finalaldoileafor
+        pushl %ecx
 
-    #mai trb doar sa faci partea de ADD. Am incercat dar habar n-am de ce nu merge :/
+        xorl %eax,%eax
+        lea v_aidiuri,%edi
+        movb (%edi,%ecx,1),%al
+        movb %al,aidi
 
-    ret
+        lea v_sizeuri,%edi
+        movl (%edi,%ecx,4),%eax
+        movl %eax,spatiu_aidi
+
+        call fct_add
+
+        popl %ecx
+        incl %ecx
+        jmp aldoileafor
+    finalaldoileafor:
+        ret
 
 .global main
 main:
     call init_matrice
     call the_real_main
-    call afisare_matrice
-    call DEFRAGMENTATION
-    call afisare_matrice
 
 etexit:
     pushl $0
