@@ -2,7 +2,7 @@
     matrice: .space 64
     v_aidiuri: .space 256   #aici am toate aidiurile, fiecare element are 1Byte
     v_sizeuri: .space 1024  #aici am toate saizurile, fiecare elem. are 4Bytes
-    counteraidi: .byte 0   #asta-mi numara cate aidiuri am salvat
+    nr_aidiuri: .byte 0   #asta-mi numara cate aidiuri am salvat
     inceput_interval: .space 4  #aceste doua variabile le folosesc la functia GET si DELETE
     final_interval: .space 4
     rand_actual: .space 4 #iar asta memoreaza randul pe care suntem
@@ -317,7 +317,7 @@ ADD_ID:
         movl %eax,spatiu_aidi 
 
         call fct_add
-        
+
         popl %ecx
         loop nume_de_loop
     ret
@@ -457,12 +457,113 @@ DELETE:
 
 chemati_salvarea:
 #Salvam toate aidiurile si size urile lor in doi vectori
+    xorl %ecx,%ecx
+    chem_for:
+        cmp $64,%ecx
+        jae termin_for
+        
+        lea matrice,%edi #iau aidiul
+        xorl %eax,%eax
+        movb (%edi,%ecx,1),%al
+        movb %al,aidi
+        pushl %ecx
+
+        cmp $0,%eax #cazul in care aidi = 0
+        je skip
+
+        pushl %eax
+        call gasireInterval #l-am pierdut pe ecx :(
+        popl %eax
+
+        movl final_interval,%ecx
+        cmp $0,%ecx 
+        jne memoram
+
+        skip:
+        popl %ecx
+        incl %ecx
+        jmp chem_for
+
+    memoram:
+        lea v_aidiuri,%edi
+        xorl %eax,%eax
+        xorl %ecx,%ecx
+        movb aidi,%al
+        movb nr_aidiuri,%cl
+        movb %al,(%edi,%ecx,1) #aici am bagat aidiul
+
+        lea v_sizeuri,%edi
+        #calculam size-ul...
+        movl final_interval,%eax
+        subl inceput_interval,%eax
+        incl %eax
+        xorl %edx,%edx
+        movl $8,%ebx
+        mull %ebx   #acum am size-ul in biti in eax
+        movl %eax,(%edi,%ecx,4)
+        incl %ecx
+        movb %cl,nr_aidiuri
+
+        #acum ies de aici dar trb sa-l cresc pe ecx
+        xorl %edx,%edx
+        movl rand_actual,%eax
+        mull %ebx   #inca am 8 in ebx
+        addl final_interval,%eax
+        movl %eax,%ecx
+        popl %ebx
+        pushl %ecx
+        jmp skip
+
+    termin_for:
+    ret
+
+
+afisez_vectorii:
+    xorl %ecx,%ecx
+    primulfor:
+        xorl %edx,%edx
+        movb nr_aidiuri,%dl
+        cmp %edx,%ecx
+        jge sadasdssdf  #scuze nu mai am inspiratie la etichete...
+        pushl %ecx
+
+        lea v_aidiuri,%edi
+        xorl %eax,%eax
+        movb (%edi,%ecx,1),%al
+        call afisare
+
+        lea v_sizeuri,%edi
+        popl %ecx
+        movl (%edi,%ecx,4),%eax
+        pushl %ecx
+        call afisare
+
+        popl %ecx
+        incl %ecx
+        jmp primulfor
+
+    sadasdssdf:
+    ret
+
+DEFRAGMENTATION:
+#memorez tot ce am in 2 vectori, resetez matricea, pun in aidi si spatiu aidi ce am si dau add din nou
+#literalmente clonare, dupa vine discutia filozofica, mai este aceeasi matrice oare? Barca lui Thesseus
+    call chemati_salvarea
+    call afisez_vectorii
+    pushl $newLine
+    call printf
+    popl %ebx
+
+    #mai trb doar sa faci partea de ADD. Am incercat dar habar n-am de ce nu merge :/
+
     ret
 
 .global main
 main:
     call init_matrice
     call the_real_main
+    call afisare_matrice
+    call DEFRAGMENTATION
     call afisare_matrice
 
 etexit:
