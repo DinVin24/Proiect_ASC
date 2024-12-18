@@ -1,5 +1,5 @@
 .data
-    matrice: .space 64
+    matrice: .space 1048576
     v_aidiuri: .space 256   #aici am toate aidiurile, fiecare element are 1Byte
     v_sizeuri: .space 1024  #aici am toate saizurile, fiecare elem. are 4Bytes
     nr_aidiuri: .byte 0   #asta-mi numara cate aidiuri am salvat
@@ -77,7 +77,7 @@ afisare_matrice:
     lea matrice,%edi
     xorl %ecx, %ecx
     forAfisare:
-        cmp $64,%ecx
+        cmp $1048576,%ecx
         je pls1stop
         pushl %ecx      #ca sa nu pierd contorul, dau pop dupa printf
         call afisamNewLine
@@ -101,7 +101,7 @@ afisamNewLine:
 #Ma zgaria pe creier sa incerc sa scriu asta in aceeasi functie cu afisare_matrice
     xorl %edx,%edx
     movl %ecx,%eax
-    movl $8,%ebx
+    movl $1024,%ebx
     divl %ebx
     cmp $0,%edx
     je daAfisam
@@ -117,7 +117,7 @@ afisamNewLine:
 
 init_matrice:
 #am facut functia asta doar sa arate mai clean main-ul
-    movl $64,%edx
+    movl $1048576,%edx
     xorl %ecx,%ecx
     xorl %eax,%eax
     lea matrice,%edi
@@ -136,14 +136,14 @@ umplere:
 #Umplu cu aidi de la un capat dat la altul!! push id,rand,inceput,final
     lea matrice,%edi
     xorl %edx,%edx
-    movl $8,%ebx
+    movl $1024,%ebx
     movl 12(%esp),%eax      #Randul pe care suntem
     movl 8(%esp), %ecx      #INCEPUT
     mull %ebx
     movl 16(%esp),%ebx      #aidi
     movl 4(%esp),%edx       #FINAL
     incl %edx
-    addl %eax,%ecx          #adun capetele cu i*8, i=(0,7)
+    addl %eax,%ecx          #adun capetele cu i*1024, i=(0,1023)
     addl %eax,%edx
     et2loop:
         cmp %edx,%ecx
@@ -169,7 +169,7 @@ fct_add:
     movl %eax,spatiu_aidi           #pastram dimensiunea efectiva in blocuri - 1
     call cautam_spatiu              #ne este returnat 0 sau 1 in eax
     cmp $0,%eax
-    je Space_Unavailable        
+    je Space_Unavailable      
     avem_spatiu:                    #apelam functia de umplere
     xorl %eax,%eax
     movb aidi,%al
@@ -191,24 +191,28 @@ fct_add:
         decl %eax
         jmp GataDecrementarea
     Space_Unavailable:  #cazul in care nu mai avem spatiu pt fisiere 
-        pushl $0
+        /**pushl $0
         pushl $0
         pushl $formatGet
         call printf
         popl %ebx
         popl %ebx
-        popl %ebx
+        popl %ebx**/
         ret
 
 cautam_spatiu:
 #Returneaza 0 sau 1 in EAX daca n-/avem spatiu in matrice pt aidi
 #Daca fumatul iti ia 9 ani din viata, as fi preferat sa fumez timp de 7 vieti decat sa scriu functia asta
+    movl spatiu_aidi,%ecx
+    cmp $1024,%ecx
+    jae navemspatiu
+
     xorl %ecx,%ecx
-    movl $8,%ebx
+    movl $1024,%ebx
     forLinii:       #iterez linie cu linie, daca cumva ajung la final inseamna ca nu incape aidiul
-        movl $8,%ebx
+        movl $1024,%ebx
         cmp %ebx,%ecx
-        jae navemspatiu
+        jge navemspatiu
         movl %ecx,rand_actual
         subl spatiu_aidi,%ebx
         xorl %ecx,%ecx
@@ -249,7 +253,7 @@ verific_interval_gol:
 #Functia asta ma ajuta la add, are ca parametri randul,inceput,final
 #Returneaza 0/1 in EAX dupa caz.
     lea matrice,%edi
-    movl $8,%ebx
+    movl $1024,%ebx
     xorl %edx,%edx
     movl 12(%esp),%eax      #Randul pe care suntem
     movl 8(%esp), %ecx      #INCEPUT
@@ -326,7 +330,7 @@ gasireInterval:
     lea matrice, %edi
     xorl %ecx,%ecx
     caut_inceput:
-        cmp $64,%ecx
+        cmp $1048576,%ecx
         je nam_gasit
         cmp %al,(%edi,%ecx,1)
         je am_gasit
@@ -352,10 +356,10 @@ gasireInterval:
         ret
 
 
-formatamIntevalu:   #doar doua impartiri la 8
+formatamIntevalu:   #doar doua impartiri la 1024
     movl inceput_interval,%eax
     xorl %edx,%edx
-    movl $8,%ebx
+    movl $1024,%ebx
     divl %ebx
     movl %eax,rand_actual
     movl %edx,inceput_interval
@@ -389,7 +393,7 @@ afisare_memorie:
     xorl %ecx,%ecx #i-ul meu
     lea matrice,%edi
     inceput_for:    #iau fiecare element din matrice, daca reprezinta un aidi, ii caut marginile si le afisez.
-        cmp $64,%ecx
+        cmp $1048576,%ecx
         jae am_ajuns_la_capat
         xorl %eax,%eax
         movb (%edi,%ecx,1),%al
@@ -418,7 +422,7 @@ afisare_memorie:
         popl %ebx
         
         movl rand_actual,%eax
-        movl $8,%ebx
+        movl $1024,%ebx
         xorl %edx,%edx
         mull %ebx
         addl final_interval,%eax
@@ -455,7 +459,7 @@ chemati_salvarea:
 #Salvam toate aidiurile si size urile lor in doi vectori
     xorl %ecx,%ecx
     chem_for:
-        cmp $64,%ecx
+        cmp $1048576,%ecx
         jae termin_for
         
         lea matrice,%edi #iau aidiul
@@ -503,7 +507,7 @@ chemati_salvarea:
         #acum ies de aici dar trb sa-l cresc pe ecx
         xorl %edx,%edx
         movl rand_actual,%eax
-        mull %ebx   #inca am 8 in ebx
+        mull %ebx   #inca am 1024 in ebx
         addl final_interval,%eax
         movl %eax,%ecx
         popl %ebx
