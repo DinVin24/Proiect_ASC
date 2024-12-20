@@ -12,6 +12,7 @@
     formatPrintf: .asciz "%d "
     formatInterval: .asciz "%d: ((%d, %d), (%d, %d))\n"
     formatGet: .asciz "((%d, %d), (%d, %d))\n"
+    formatDebugging: .asciz "AIDI: %d    SPATIU: %d\n"
     formatString: .asciz "%ld"
     newLine: .asciz "\n"
 .text
@@ -263,6 +264,7 @@ verific_interval_gol:
     movl %edx, final_interval
     addl %eax,%ecx          
     addl %eax,%edx
+    incl %edx   #S-AR PUTEA SA NU MEARGA!! AM SCRIS ASTA PT CA LUAM DOAR 6/10 hope it doesnt bite me in the ass later...
     xorl %ebx,%ebx
     loopVerific:
         cmp %ecx,%edx
@@ -280,6 +282,20 @@ verific_interval_gol:
 
 afisare_add:
 #Se apeleaza dupa add, afiseaza intervalul in care am salvat aidiul
+    #URMATOARELE RANDURI SUNT PT DEBUGGING, TE ROG SA MA STERGI MAI TARZIU <3
+    /**movl spatiu_aidi,%eax
+    pushl %eax
+    xorl %eax,%eax
+    movb aidi,%al
+    pushl %eax
+    pushl $formatDebugging  
+    call printf
+    popl %ebx
+    popl %ebx
+    popl %ebx**/
+
+
+    #DE AICI TOTUL ESTE IN REGULA (sper...)
     xorl %eax,%eax
     movb aidi,%al
     pushl %eax
@@ -350,7 +366,8 @@ gasireInterval:
             call formatamIntevalu
             ret
     nam_gasit:
-        movl $0,%ecx
+        xorl %ecx, %ecx
+        movl %ecx, rand_actual
         movl %ecx, inceput_interval
         movl %ecx,final_interval
         ret
@@ -455,7 +472,7 @@ DELETE:
     call afisare_memorie
     ret
 
-chemati_salvarea:
+chemati_salvarea:   
 #Salvam toate aidiurile si size urile lor in doi vectori
     xorl %ecx,%ecx
     chem_for:
@@ -507,7 +524,8 @@ chemati_salvarea:
         #acum ies de aici dar trb sa-l cresc pe ecx
         xorl %edx,%edx
         movl rand_actual,%eax
-        mull %ebx   #inca am 1024 in ebx
+        movl $1024,%ebx     #inmultesc randul cu 1024 ca sa stiu unde sunt in vector 
+        mull %ebx   
         addl final_interval,%eax
         movl %eax,%ecx
         popl %ebx
@@ -517,6 +535,25 @@ chemati_salvarea:
     termin_for:
     ret
 
+
+nu_stiu_sa_folosesc_debuggerul:
+    pushl %eax
+    pushl %ebx
+    pushl %ecx
+    pushl %edx
+
+    movl $6969,%eax
+    pushl %eax
+    pushl $formatPrintf
+    call printf
+    popl %ebx
+    popl %ebx
+
+    popl %edx
+    popl %ecx
+    popl %ebx
+    popl %eax
+    ret
 
 afisez_vectorii:
     xorl %ecx,%ecx
@@ -550,8 +587,12 @@ afisez_vectorii:
 
 DEFRAGMENTATION:
 #memorez tot ce am in 2 vectori, resetez matricea, pun in aidi si spatiu aidi ce am si dau add din nou
-#literalmente clonare, dupa vine discutia filozofica, mai este aceeasi matrice oare? Barca lui Thesseus
-    call chemati_salvarea
+#literalmente clonare, dupa vine discutia filozofica, mai este aceeasi matrice oare? Barca lui Theseus
+
+#Mda Emanuel, parea cool la inceput dar ai uitat ca aidiurile trb memorate in aceeasi ordine, add-ul nu face asta, el le pune
+#unde gaseste loc... :'((
+    call init_vectori
+    call chemati_salvarea   #functia asta functioneaza o singura data...
     call init_matrice
     xorl %ecx,%ecx
     xorl %eax,%eax
@@ -579,10 +620,41 @@ DEFRAGMENTATION:
     finalaldoileafor:
         ret
 
+init_vectori:
+#Mda cam trebuie sa-mi resetez vectorii dupa fiecare defralalalal
+    #for de la 1 la 64 in care bag 0 in v_aidi (de ce 64 si nu 256? pt ca bag long-uri si nu bytes B)   )
+    movl $64,%edx
+    xorl %ecx,%ecx
+    xorl %eax,%eax
+    movb %al,nr_aidiuri
+    lea v_aidiuri,%edi
+    forprimul:
+        cmp %edx,%ecx
+        je foraldoilea
+        movl %eax,(%edi,%ecx,4)
+        incl %ecx
+        jmp gataprimu
+    
+    gataprimu:
+    movl $256,%edx
+    xorl %ecx,%ecx
+    lea v_sizeuri,%edi
+    foraldoilea:
+        cmp %edx,%ecx
+        je gatatotu
+        
+        movl %eax,(%edi,%ecx,4)
+
+        incl %ecx
+        jmp foraldoilea
+
+    gatatotu:
+    ret
+
 .global main
 main:
     call init_matrice
-    call the_real_main
+    call the_real_main  
 
 etexit:
     pushl $0
@@ -596,3 +668,5 @@ etexit:
 #git add .
 #git commit -m "mesaj"
 #git push origin main
+
+#repara defralalala pls :'(((
