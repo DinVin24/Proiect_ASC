@@ -3,6 +3,7 @@
     v_aidiuri: .space 256   #aici am toate aidiurile, fiecare element are 1Byte
     v_sizeuri: .space 1024  #aici am toate saizurile, fiecare elem. are 4Bytes
     nr_aidiuri: .byte 0   #asta-mi numara cate aidiuri am salvat
+    folosesc_add: .long 1   #bool pt a sti daca folosesc ADD sau Defralalal
     inceput_interval: .space 4  #aceste doua variabile le folosesc la functia GET si DELETE
     final_interval: .space 4
     rand_actual: .space 4 #iar asta memoreaza randul pe care suntem
@@ -40,6 +41,8 @@ the_real_main:
         loop startLoop
     ret
     apelam_add:
+        movl $1,%ebx
+        movl %ebx,folosesc_add
         call ADD_ID
         jmp revenim
     apelam_get:
@@ -49,6 +52,8 @@ the_real_main:
         call DELETE
         jmp revenim
     apelam_defralalala:
+        xorl %ebx,%ebx
+        movl %ebx,folosesc_add
         call DEFRAGMENTATION
         jmp revenim
     ret
@@ -74,7 +79,7 @@ afisare:
 
 afisare_matrice:
 #Afisez toata matricea, n-ai nev. de parametrii.
-#la fel si asta
+#tot pt debugging
     lea matrice,%edi
     xorl %ecx, %ecx
     forAfisare:
@@ -158,7 +163,7 @@ umplere:
 
 fct_add:
 #Adauga in memorie, unde exista loc, aidiul citit
-    lea matrice,%edi #ma joc cu vectorul
+    lea matrice,%edi #ma joc cu matricea
     movl spatiu_aidi,%eax
     xorl %edx,%edx 
     movl $8,%ebx
@@ -192,13 +197,21 @@ fct_add:
         decl %eax
         jmp GataDecrementarea
     Space_Unavailable:  #cazul in care nu mai avem spatiu pt fisiere 
-        /**pushl $0
+        xorl %ebx,%ebx
+        movb aidi,%bl
         pushl $0
-        pushl $formatGet
+        pushl $0
+        pushl $0
+        pushl $0
+        pushl %ebx
+        pushl $formatInterval
         call printf
         popl %ebx
         popl %ebx
-        popl %ebx**/
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        popl %ebx
         ret
 
 cautam_spatiu:
@@ -208,8 +221,11 @@ cautam_spatiu:
     cmp $1024,%ecx
     jae navemspatiu
 
-    xorl %ecx,%ecx
     movl $1024,%ebx
+    movl folosesc_add,%ecx
+    cmp $1,%ecx
+    je sari
+    movl rand_actual,%ecx     #daca folosesc defragmentation incep cautarea dupa ultimul aidi adaugat, ca sa nu-mi stric ordinea
     forLinii:       #iterez linie cu linie, daca cumva ajung la final inseamna ca nu incape aidiul
         movl $1024,%ebx
         cmp %ebx,%ecx
@@ -249,6 +265,9 @@ cautam_spatiu:
     avemspatiu:
         movl $1,%eax
         ret
+    sari:
+        xorl %ecx,%ecx
+        jmp forLinii
 
 verific_interval_gol:
 #Functia asta ma ajuta la add, are ca parametri randul,inceput,final
@@ -264,7 +283,7 @@ verific_interval_gol:
     movl %edx, final_interval
     addl %eax,%ecx          
     addl %eax,%edx
-    incl %edx   #S-AR PUTEA SA NU MEARGA!! AM SCRIS ASTA PT CA LUAM DOAR 6/10 hope it doesnt bite me in the ass later...
+    incl %edx   #S-AR PUTEA SA NU MEARGA!! AM SCRIS ASTA PT CA LUAM DOAR 6/8 hope it doesnt bite me in the ass later...
     xorl %ebx,%ebx
     loopVerific:
         cmp %ecx,%edx
@@ -282,20 +301,6 @@ verific_interval_gol:
 
 afisare_add:
 #Se apeleaza dupa add, afiseaza intervalul in care am salvat aidiul
-    #URMATOARELE RANDURI SUNT PT DEBUGGING, TE ROG SA MA STERGI MAI TARZIU <3
-    /**movl spatiu_aidi,%eax
-    pushl %eax
-    xorl %eax,%eax
-    movb aidi,%al
-    pushl %eax
-    pushl $formatDebugging  
-    call printf
-    popl %ebx
-    popl %ebx
-    popl %ebx**/
-
-
-    #DE AICI TOTUL ESTE IN REGULA (sper...)
     xorl %eax,%eax
     movb aidi,%al
     pushl %eax
@@ -536,24 +541,6 @@ chemati_salvarea:
     ret
 
 
-nu_stiu_sa_folosesc_debuggerul:
-    pushl %eax
-    pushl %ebx
-    pushl %ecx
-    pushl %edx
-
-    movl $6969,%eax
-    pushl %eax
-    pushl $formatPrintf
-    call printf
-    popl %ebx
-    popl %ebx
-
-    popl %edx
-    popl %ecx
-    popl %ebx
-    popl %eax
-    ret
 
 afisez_vectorii:
     xorl %ecx,%ecx
@@ -588,14 +575,12 @@ afisez_vectorii:
 DEFRAGMENTATION:
 #memorez tot ce am in 2 vectori, resetez matricea, pun in aidi si spatiu aidi ce am si dau add din nou
 #literalmente clonare, dupa vine discutia filozofica, mai este aceeasi matrice oare? Barca lui Theseus
-
-#Mda Emanuel, parea cool la inceput dar ai uitat ca aidiurile trb memorate in aceeasi ordine, add-ul nu face asta, el le pune
-#unde gaseste loc... :'((
     call init_vectori
-    call chemati_salvarea   #functia asta functioneaza o singura data...
+    call chemati_salvarea  
     call init_matrice
     xorl %ecx,%ecx
     xorl %eax,%eax
+    movl %eax,rand_actual
     aldoileafor:
         xorl %edx,%edx
         movb nr_aidiuri,%dl
@@ -668,5 +653,3 @@ etexit:
 #git add .
 #git commit -m "mesaj"
 #git push origin main
-
-#repara defralalala pls :'(((
