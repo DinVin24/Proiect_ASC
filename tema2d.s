@@ -696,17 +696,6 @@ verifica_puncte:
     jne nuEstePunct
 
     verificamSingurPunct:
-        # pushl %eax
-        # pushl %ecx
-        # pushl %edx
-        # pushl %edi
-        # pushl $formatPrintfString
-        # call printf
-        # popl %edi
-        # popl %edi
-        # popl %edx
-        # popl %ecx
-        # popl %eax
         incl %edi
         movb (%edi), %al
         cmpb $0, %al
@@ -811,7 +800,7 @@ CONCRETE:
     #popl %ebx
     #popl %ebx
 
-    # Hai sa deschidem folderul!!!! XD
+    # Hai sa deschidem folderul!!!! XDDD
     movl $5, %eax
     lea path_folder, %ebx
     movl $0, %ecx 
@@ -857,14 +846,13 @@ CONCRETE:
         #popl %ebx
         #popl %ebx
 
-        # Deschidem si fisierul x 3
+        # Deschidem si fisierul x3
         movl $5, %eax
         lea stringuri_lipite, %ebx
         movl $0, %ecx
         int $0x80
-        movl %eax,OGFileDescriptor
 
-        xorl %edx, %edx     #Aici ne batem joc de descriptor, il reducem la o forma mai mica...
+        xorl %edx, %edx     #Aducem descriptorul la o forma adecvata
         movl $255, %ecx
         divl %ecx
         incl %edx
@@ -896,7 +884,8 @@ CONCRETE:
 
         jmp verificam_daca_este_vrednic
         este_vrednic:
-
+        movl $1,%ebx
+        movl %ebx,folosesc_add
         call fct_add
         jmp foarte_vrednic
 
@@ -907,7 +896,7 @@ CONCRETE:
         pushl $0
         pushl $0
         pushl aidi
-        pushl $formatInterval
+        pushl $formatInterval           #Aici afisam 0 0 0 0 cand nu putem insera aidiul
         call printf
         popl %ebx
         popl %ebx
