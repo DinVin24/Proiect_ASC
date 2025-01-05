@@ -4,18 +4,36 @@
     v_sizeuri: .space 1024  #aici am toate saizurile, fiecare elem. are 4Bytes
     nr_aidiuri: .byte 0   #asta-mi numara cate aidiuri am salvat
     folosesc_add: .long 1   #bool pt a sti daca folosesc ADD sau Defralalal
+    are_puncte: .long 0   #bool pt a sti daca am puncte in numele fisierului
     inceput_interval: .space 4  #aceste doua variabile le folosesc la functia GET si DELETE
     final_interval: .space 4
     rand_actual: .space 4 #iar asta memoreaza randul pe care suntem
     var_citire: .space 4 #Variabila pt citire numere...
+    var_citire_string: .space 512 #Variabile pt citire stringuri...
     spatiu_aidi: .space 4 #Variabila care va retine nr de blocuri-1
     aidi: .space 1 #Variabila care va retine aidiul citit
+    aidi_fisier: .space 4 #Variabila care va retine aidiul returnat de open
+    aidi_folder: .space 4 #Variabila care va retine aidiul de la folder
     formatPrintf: .asciz "%d "
+    formatConcrete: .asciz "%d\n%d\n"
     formatInterval: .asciz "%d: ((%d, %d), (%d, %d))\n"
     formatGet: .asciz "((%d, %d), (%d, %d))\n"
     formatDebugging: .asciz "AIDI: %d    SPATIU: %d\n"
     formatString: .asciz "%ld"
+    formatScanfString: .asciz "%s"
+    formatPrintfString: .asciz "%s\n"
+    formatPrintfDec: .asciz "%d\n"
+    path_folder: .space 512
+    #nume_fisier: .space 512
     newLine: .asciz "\n"
+    slesh: .asciz "/"
+    punctuletz: .asciz "."
+    bafarcufisiere: .space 512
+    souljaboytellem: .space 256     #Buffer nebun care tine informatii despre fiecare fisier din directory ul meu
+                                    #De ce acest nume? voiam sa pun bafardefisiere dar era cam luat...
+    catsacitit: .space 4
+    stringuri_lipite: .space 1024 #Asta e folosita ca sa lipesc path_folder si nume_fisier impreuna
+    OGFileDescriptor: .long 0     #fara niciun fel de discutii!
 .text
 
 the_real_main:
@@ -27,19 +45,21 @@ the_real_main:
         call citire
         movl var_citire,%eax
 
-        cmp $1,%eax  #ADICA ADD 
+        cmp $1,%eax  #ADICA ADD
         je apelam_add
         cmp $2,%eax #ADICA GET
         je apelam_get
         cmp $3,%eax #ADICA DELETE
-        je apelam_delete 
+        je apelam_delete
         cmp $4,%eax #ADICA DEFRAGALALAL
         je apelam_defralalala
+	    cmp $5,%eax #ADICA CIMENT
+	    je apelam_concrete
 
         revenim:
         popl %ecx
         loop startLoop
-    ret
+        ret
     apelam_add:
         movl $1,%ebx
         movl %ebx,folosesc_add
@@ -56,6 +76,9 @@ the_real_main:
         movl %ebx,folosesc_add
         call DEFRAGMENTATION
         jmp revenim
+    apelam_concrete:
+	    call CONCRETE
+	    jmp revenim
     ret
 
 citire:
@@ -66,6 +89,16 @@ citire:
     popl %ebx
     popl %ebx
     ret
+
+citire_string:
+#Citim de la tast. un string. Acesta ramane memorat in var_citire_string!!
+    pushl $var_citire_string
+    pushl $formatScanfString
+    call scanf
+    popl %ebx
+    popl %ebx
+    ret
+
 
 afisare:
 #Afisam pe ecran un numar, cu spatiu. Inainte de apel, trb sa mutam in EAX nr de afisat!!!
@@ -130,7 +163,7 @@ init_matrice:
     forInit:
         cmp %edx,%ecx
         jae gataForInit
-        
+
         movb %al,(%edi,%ecx,1)
 
         incl %ecx
@@ -165,7 +198,7 @@ fct_add:
 #Adauga in memorie, unde exista loc, aidiul citit
     lea matrice,%edi #ma joc cu matricea
     movl spatiu_aidi,%eax
-    xorl %edx,%edx 
+    xorl %edx,%edx
     movl $8,%ebx
     divl %ebx      #impart la 8
     cmp $0,%edx
@@ -173,9 +206,25 @@ fct_add:
     GataDecrementarea:
 
     movl %eax,spatiu_aidi           #pastram dimensiunea efectiva in blocuri - 1
+    xorl %eax, %eax
+    xorl %ecx, %ecx
+    xorl %edx, %edx
+    movb aidi, %cl
+    xorl %ebx, %ebx
+    cautamAidiExistent:
+        cmp $1048576, %ebx
+        je GataCautareadeAidi
+        movb (%edi, %ebx, 1), %al
+        cmpb %al, %cl
+        je Space_Unavailable
+        incl %ebx
+        jmp cautamAidiExistent
+
+    GataCautareadeAidi:
+
     call cautam_spatiu              #ne este returnat 0 sau 1 in eax
     cmp $0,%eax
-    je Space_Unavailable      
+    je Space_Unavailable
     avem_spatiu:                    #apelam functia de umplere
     xorl %eax,%eax
     movb aidi,%al
@@ -192,11 +241,11 @@ fct_add:
     call afisare_add
     ret
 
-    
+
     decrementez:
         decl %eax
         jmp GataDecrementarea
-    Space_Unavailable:  #cazul in care nu mai avem spatiu pt fisiere 
+    Space_Unavailable:  #cazul in care nu mai avem spatiu pt fisiere
         xorl %ebx,%ebx
         movb aidi,%bl
         pushl $0
@@ -281,7 +330,7 @@ verific_interval_gol:
     movl 4(%esp),%edx       #FINAL
     movl %ecx, inceput_interval
     movl %edx, final_interval
-    addl %eax,%ecx          
+    addl %eax,%ecx
     addl %eax,%edx
     incl %edx   #S-AR PUTEA SA NU MEARGA!! AM SCRIS ASTA PT CA LUAM DOAR 6/8 hope it doesnt bite me in the ass later...
     xorl %ebx,%ebx
@@ -319,7 +368,7 @@ afisare_add:
     popl %ebx
     popl %ebx
     popl %ebx
-    
+
     ret
 
 ADD_ID:
@@ -335,7 +384,7 @@ ADD_ID:
 
         call citire    #AICI CITIM SPATIUL OCUPAT
         movl var_citire,%eax
-        movl %eax,spatiu_aidi 
+        movl %eax,spatiu_aidi
 
         call fct_add
 
@@ -357,7 +406,7 @@ gasireInterval:
         je am_gasit
         incl %ecx
         jmp caut_inceput
-    
+
     am_gasit:
         movl %ecx, inceput_interval
         caut_final:
@@ -442,7 +491,7 @@ afisare_memorie:
         popl %ebx
         popl %ebx
         popl %ebx
-        
+
         movl rand_actual,%eax
         movl $1024,%ebx
         xorl %edx,%edx
@@ -477,13 +526,13 @@ DELETE:
     call afisare_memorie
     ret
 
-chemati_salvarea:   
+chemati_salvarea:
 #Salvam toate aidiurile si size urile lor in doi vectori
     xorl %ecx,%ecx
     chem_for:
         cmp $1048576,%ecx
         jae termin_for
-        
+
         lea matrice,%edi #iau aidiul
         xorl %eax,%eax
         movb (%edi,%ecx,1),%al
@@ -498,7 +547,7 @@ chemati_salvarea:
         popl %eax
 
         movl final_interval,%ecx
-        cmp $0,%ecx 
+        cmp $0,%ecx
         jne memoram
 
         skip:
@@ -529,8 +578,8 @@ chemati_salvarea:
         #acum ies de aici dar trb sa-l cresc pe ecx
         xorl %edx,%edx
         movl rand_actual,%eax
-        movl $1024,%ebx     #inmultesc randul cu 1024 ca sa stiu unde sunt in vector 
-        mull %ebx   
+        movl $1024,%ebx     #inmultesc randul cu 1024 ca sa stiu unde sunt in vector
+        mull %ebx
         addl final_interval,%eax
         movl %eax,%ecx
         popl %ebx
@@ -576,7 +625,7 @@ DEFRAGMENTATION:
 #memorez tot ce am in 2 vectori, resetez matricea, pun in aidi si spatiu aidi ce am si dau add din nou
 #literalmente clonare, dupa vine discutia filozofica, mai este aceeasi matrice oare? Barca lui Theseus
     call init_vectori
-    call chemati_salvarea  
+    call chemati_salvarea
     call init_matrice
     xorl %ecx,%ecx
     xorl %eax,%eax
@@ -619,7 +668,7 @@ init_vectori:
         movl %eax,(%edi,%ecx,4)
         incl %ecx
         jmp gataprimu
-    
+
     gataprimu:
     movl $256,%edx
     xorl %ecx,%ecx
@@ -627,7 +676,7 @@ init_vectori:
     foraldoilea:
         cmp %edx,%ecx
         je gatatotu
-        
+
         movl %eax,(%edi,%ecx,4)
 
         incl %ecx
@@ -636,10 +685,303 @@ init_vectori:
     gatatotu:
     ret
 
+verifica_puncte:
+#Vedem daca numele fisierului este . sau .. pentru ca am inteles ca astea nu sunt bune?
+    xorl %eax, %eax
+    movb (%edi), %al
+    lea punctuletz, %esi
+    xorl %ecx, %ecx
+    movb (%esi), %cl
+    cmpb %al, %cl
+    jne nuEstePunct
+
+    verificamSingurPunct:
+        # pushl %eax
+        # pushl %ecx
+        # pushl %edx
+        # pushl %edi
+        # pushl $formatPrintfString
+        # call printf
+        # popl %edi
+        # popl %edi
+        # popl %edx
+        # popl %ecx
+        # popl %eax
+        incl %edi
+        movb (%edi), %al
+        cmpb $0, %al
+        je esteSingurPunct
+        jmp verificamDouaPuncte
+
+    esteSingurPunct:
+        movl $1, are_puncte
+        ret
+
+    verificamDouaPuncte:
+        movb (%edi), %al
+        cmpb %al, %cl
+        je maiVerificamDouaPuncte
+        jmp nuEstePunct
+
+    maiVerificamDouaPuncte:
+        incl %edi
+        movb (%edi), %al
+        cmpb $0, %al
+        je chiarEsteDouaPuncte
+        jmp nuEstePunct
+
+    chiarEsteDouaPuncte:
+        movl $1, are_puncte
+        ret
+
+    nuEstePunct:
+        movl $0, are_puncte
+        ret
+
+construiestePathul:
+# Practic face din folder path si numele fisierului un singur path (pt a-l folosi la open)
+    #mai intai golim stringuri_lipite daca are ceva in el
+    xorl %eax, %eax
+    lea stringuri_lipite, %ebx
+    stergelBine:
+        movb (%ebx), %al
+        cmpb $0, %al
+        je continuaConstructia
+        xorl %eax, %eax
+        movb %al, (%ebx)
+        incl %ebx
+        jmp stergelBine
+
+    continuaConstructia:
+    lea stringuri_lipite, %ebx
+    lea path_folder, %esi
+    xorl %eax, %eax
+    copiazaNumeFolder:
+        movb (%esi), %al
+        movb %al, (%ebx)
+        incl %esi
+        incl %ebx
+        cmpb $0, %al
+        jne copiazaNumeFolder
+
+    decl %ebx
+
+    copiazaNumeFisier:
+        movb (%edi), %al
+        movb %al, (%ebx)
+        incl %edi
+        incl %ebx
+        cmpb $0, %al
+        jne copiazaNumeFisier
+
+    ret
+
+
+CONCRETE:
+# Deci, ce face concrete? Nici eu nu as putea explica...
+    call citire_string
+    lea path_folder, %edi
+    lea var_citire_string, %esi
+    xorl %eax, %eax
+    # Initializam path ul de la folder
+    forpath:
+        movb (%esi), %al
+        movb %al, (%edi)
+        incl %esi
+        incl %edi
+        cmpb $0, %al
+        jne forpath
+
+    # Acum verificam daca se termina cu / (cred ca asa e mai bine si in alt mod imi e lene)
+    curatarea:
+    decl %edi
+    decl %edi
+    lea slesh, %ebx
+    xorl %eax, %eax
+    xorl %ecx, %ecx
+    movb (%ebx), %al
+    movb (%edi), %cl
+    cmpb %al, %cl       #Daca path-ul nare slesh la final, ii punem noi unul
+    jne repara_pathul
+    gatacuratarea:      #De aici avem un path corespunzator. N-ar fi fost nevoie de atata scris daca aveam exemplu in enunt :(
+
+    #pushl $path_folder  #Debugging, afisam pe ecran ca am inteles ce director cautam
+    #pushl $formatPrintfString
+    #call printf
+    #popl %ebx
+    #popl %ebx
+
+    # Hai sa deschidem folderul!!!! XD
+    movl $5, %eax
+    lea path_folder, %ebx
+    movl $0, %ecx 
+    int $0x80
+
+    cmpl $0, %eax
+    jle amMuscatDeConcrete
+
+    movl %eax, aidi_folder
+    
+    #Folosim un getdents frumos, foarte specific numele. Get Dentists...
+    deschidemFolderu:
+
+    movl $141, %eax
+    movl aidi_folder, %ebx
+    lea bafarcufisiere, %ecx    #aici am despre tot de la toti
+    movl $256, %edx
+    int $0x80
+
+    cmpl $0, %eax #Daca ceva nu a mers bine sau s-a terminat folderu, la revedere ^~^
+    jle amMuscatDeConcrete
+
+    movl %eax, catsacitit
+    lea bafarcufisiere, %edi
+
+    addl $10, %edi # Asa ajungem la numele fisierului
+    neJucamCuFisierul:
+        movl %edi, %ebx
+        call verifica_puncte
+        movl %ebx, %edi
+        movl $1, %eax
+        cmpl %eax, are_puncte
+        je sariLaUrmatorul
+
+        movl %edi, %ecx
+        call construiestePathul
+        movl %ecx, %edi
+
+        #lea stringuri_lipite, %ecx  
+        #pushl %ecx                          #SCOATE COMENTARIILE DACA VR SA VEZI FILE_PATH
+        #pushl $formatPrintfString
+        #call printf
+        #popl %ebx
+        #popl %ebx
+
+        # Deschidem si fisierul x 3
+        movl $5, %eax
+        lea stringuri_lipite, %ebx
+        movl $0, %ecx
+        int $0x80
+        movl %eax,OGFileDescriptor
+
+        xorl %edx, %edx     #Aici ne batem joc de descriptor, il reducem la o forma mai mica...
+        movl $255, %ecx
+        divl %ecx
+        incl %edx
+        movl %edx, aidi
+
+        # Luam marimea fisierului (in bytes!!)
+        movl $106, %eax
+        lea stringuri_lipite, %ebx
+        lea souljaboytellem, %ecx
+        int $0x80
+
+        # Impartim la 1024 ca sa aflam kB
+        lea souljaboytellem, %ecx
+        movl 20(%ecx), %eax # s-ar putea sa nu mearga!!!!
+        movl $1024, %ecx
+        xorl %edx, %edx
+        divl %ecx
+        movl %eax, spatiu_aidi
+
+
+        push %eax
+        push %ecx
+        push %ebx
+        push %edx
+        push %esi
+        push %edi
+
+        call afisam_concrete
+
+        jmp verificam_daca_este_vrednic
+        este_vrednic:
+
+        call fct_add
+        jmp foarte_vrednic
+
+        nu_este_vrednic:
+
+        pushl $0
+        pushl $0
+        pushl $0
+        pushl $0
+        pushl aidi
+        pushl $formatInterval
+        call printf
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        popl %ebx
+        popl %ebx
+
+        #call inchidem_fisierul
+        foarte_vrednic:
+
+        popl %edi
+        popl %esi
+        popl %edx
+        popl %ebx
+        popl %ecx
+        popl %eax
+
+        sariLaUrmatorul:
+        xorl %eax, %eax
+        movw -2(%edi), %ax
+        addl %eax, %edi
+        movl catsacitit, %edx
+        leal bafarcufisiere(%edx), %ebx
+        cmpl %ebx, %edi
+        jl neJucamCuFisierul
+        jmp deschidemFolderu #aici de fapt vreau doar sa termin citirea din folder :v
+
+
+    repara_pathul:
+        incl %edi
+        movb %al, (%edi)
+        incl %edi
+        movb $0, (%edi)
+        jmp gatacuratarea
+
+    amMuscatDeConcrete:
+    # Ma dor dintii :( auagshahfasdja
+        movl $6,%eax
+        movl aidi_folder,%ebx
+        int $0x80
+        ret
+    verificam_daca_este_vrednic:
+        movl $9,%eax
+        movl spatiu_aidi,%ebx
+        cmp %ebx,%eax      #DACA EBX < 9 NU ESTE VREDNIC!
+        ja nu_este_vrednic
+        pushl aidi
+        call gasireInterval
+        popl %eax
+        xorl %eax,%eax
+        cmp final_interval,%eax #Daca deja avem acest aidi in matrice, nu-l mai bagam wtf
+        jne nu_este_vrednic
+        jmp este_vrednic
+
+inchidem_fisierul:
+    movl $6,%eax
+    movl OGFileDescriptor,%ebx
+    int $0x80
+    ret 
+afisam_concrete:
+    pushl spatiu_aidi
+    pushl aidi
+    pushl $formatConcrete
+    call printf
+    popl %ebx
+    popl %ebx
+    popl %ebx
+    ret
+
 .global main
 main:
     call init_matrice
-    call the_real_main  
+    call the_real_main
 
 etexit:
     pushl $0
